@@ -1,12 +1,12 @@
 package main
 
 import (
-	"ezproxy/rproxy"
 	"net/http"
 	"flag"
 	"os"
 	"fmt"
 
+	"github.com/jhmitchell/GoProxy/rproxy"
 	"go.uber.org/zap"
 )
 
