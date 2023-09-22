@@ -8,6 +8,7 @@ import (
 
 	"github.com/jhmitchell/GoProxy/rproxy"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // parseArgs parses the command-line arguments for proxy parameters.
