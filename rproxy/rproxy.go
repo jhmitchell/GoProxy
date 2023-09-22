@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // proxy represents the reverse proxy structure, holding the ReverseProxy
