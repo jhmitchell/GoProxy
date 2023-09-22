@@ -23,11 +23,20 @@ func parseArgs() (string, int, int, *zap.Logger) {
 	flag.IntVar(&rport, "rport", 80, "The port of the host to be proxied")
 	flag.IntVar(&lport, "lport", 8080, "The port the proxy will listen on")
 	flag.StringVar(&logfile, "logging", "", "Logfile name")
+
+	// Set custom usage function
+    flag.Usage = func() {
+        fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
+        fmt.Fprintln(os.Stderr, "Options:")
+        flag.PrintDefaults()
+    }
+
 	flag.Parse()
 
 	if rhost == "" {
 		// Require rhost, otherwise exit
 		fmt.Fprintf(os.Stderr, "Missing required argument --rhost\n")
+		flag.Usage()
 		os.Exit(1)
 	}
 
