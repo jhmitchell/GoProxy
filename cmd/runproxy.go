@@ -27,14 +27,16 @@ func parseArgs() (string, int, int, *zap.Logger) {
 
 	if rhost == "" {
 		// Require rhost, otherwise exit
-		log.Fatal("Missing required argument --rhost")
+		fmt.Fprintf(os.Stderr, "Missing required argument --rhost\n")
+		os.Exit(1)
 	}
 
 	if logfile != "" {
 		// Create or open the log file
 		file, err := os.OpenFile(logfile, os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {
-			log.Fatal("Failed to open log file", zap.Error(err))
+			fmt.Fprintf(os.Stderr, "Failed to open log file: %v\n", err)
+			os.Exit(1)
 		}
 		log = zap.New(zapcore.NewCore(
 			zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
@@ -51,7 +53,8 @@ func main() {
 
 	p, err := rproxy.NewProxy(rhost, rport, log)
 	if err != nil {
-		log.Fatal("Failed to create proxy", zap.Error(err))
+		fmt.Fprintf(os.Stderr, "Failed to create proxy: %v\n", err)
+		os.Exit(1)
 	}
 
 	log.Info("Reverse Proxy running")
