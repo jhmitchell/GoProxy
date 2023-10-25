@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -53,30 +52,17 @@ func ProxyRequestHandler(proxy *httputil.ReverseProxy) func(http.ResponseWriter,
 
 // hookRequest returns a function that modifies incoming requests.
 // The function logs the received requests.
-func (p *proxy) hookRequest() func(http.ResponseWriter, *http.Request) {
-	return func(rw http.ResponseWriter, req *http.Request) {
-		// Extract the requester's IP
+func (p *proxy) hookRequest() func(*http.Request) {
+	return func(req *http.Request) {
 		ip := req.RemoteAddr
-
-		// Handle both IPv4 and IPv6
-		if index := strings.LastIndex(ip, ":"); index != -1 {
-			ip = ip[:index]
-		}
-
-		limiter := GetRateLimiter(ip)
-		if !limiter.Allow() {
-			// Stop processing this request further
-			p.log.Warn("Rate limit exceeded", zap.String("Client IP", req.RemoteAddr))
-			http.Error(rw, "Too Many Requests", http.StatusTooManyRequests)
-			return
-		}
+		userAgent := req.UserAgent()
 
 		p.originalDirector(req)
 		p.log.Info("Received incoming request",
 			zap.String("Method", req.Method),
 			zap.String("URL", req.URL.String()),
-			zap.String("Client IP", req.RemoteAddr),
-			zap.String("User-Agent", req.UserAgent()),
+			zap.String("Client IP", ip),
+			zap.String("User-Agent", userAgent),
 			zap.Time("Timestamp", time.Now()))
 	}
 }

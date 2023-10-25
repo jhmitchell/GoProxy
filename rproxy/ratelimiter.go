@@ -1,6 +1,8 @@
 package rproxy
 
 import (
+	"net/http"
+	"strings"
 	"sync"
 
 	"golang.org/x/time/rate"
@@ -16,9 +18,31 @@ func GetRateLimiter(ip string) *rate.Limiter {
 
 	limiter, exists := rateLimiters[ip]
 	if !exists {
-		// Example: Allow 5 requests per second with a burst of 10
+		// Allow 5 requests per second with a burst of 10
 		limiter = rate.NewLimiter(5, 10)
 		rateLimiters[ip] = limiter
 	}
 	return limiter
+}
+
+// rateLimiterMiddleware checks if the incoming request exceeds the rate limit.
+// If it does, the middleware responds with a "Too Many Requests" status and stops further processing.
+func RateLimiterMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Extract the IP address from the request
+		ip := req.RemoteAddr
+
+		// Get the base IP addr, compatible with IPv6
+		if index := strings.LastIndex(ip, ":"); index != -1 {
+			ip = ip[:index]
+		}
+
+		limiter := GetRateLimiter(ip)
+		if !limiter.Allow() {
+			http.Error(rw, "Too Many Requests", http.StatusTooManyRequests)
+			return
+		}
+
+		next.ServeHTTP(rw, req)
+	})
 }

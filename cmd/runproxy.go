@@ -1,10 +1,10 @@
 package main
 
 import (
-	"net/http"
 	"flag"
-	"os"
 	"fmt"
+	"net/http"
+	"os"
 
 	"github.com/jhmitchell/GoProxy/rproxy"
 	"go.uber.org/zap"
@@ -15,7 +15,7 @@ import (
 func parseArgs() (string, int, int, *zap.Logger) {
 	var rhost, logfile string
 	var rport, lport int
-	
+
 	log, _ := zap.NewProduction()
 
 	// Set flags. Note: I want to try colorizing this
@@ -25,11 +25,11 @@ func parseArgs() (string, int, int, *zap.Logger) {
 	flag.StringVar(&logfile, "logging", "", "Logfile name")
 
 	// Set custom usage function
-    flag.Usage = func() {
-        fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
-        fmt.Fprintln(os.Stderr, "Options:")
-        flag.PrintDefaults()
-    }
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
+		fmt.Fprintln(os.Stderr, "Options:")
+		flag.PrintDefaults()
+	}
 
 	flag.Parse()
 
@@ -68,9 +68,9 @@ func main() {
 
 	log.Info("Reverse Proxy running")
 
-	// Register the reverse proxy as the handler for all incoming requests
-	http.HandleFunc("/", rproxy.ProxyRequestHandler(p.ReverseProxy))
-	
+	// Wrap the reverse proxy in a rate limiter middleware
+	http.Handle("/", rproxy.RateLimiterMiddleware(p))
+
 	// Start the http server
 	// Note: More control over the server's behavior is available by creating
 	// a custom Server
