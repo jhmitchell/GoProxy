@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -13,7 +14,7 @@ import (
 // from the httputil package, a zap logger, and the original Director function.
 type proxy struct {
 	*httputil.ReverseProxy
-	log             *zap.Logger
+	log              *zap.Logger
 	originalDirector func(*http.Request)
 }
 
@@ -27,8 +28,8 @@ func NewProxy(rhost string, rport int, logger *zap.Logger) (*proxy, error) {
 	}
 
 	p := &proxy{
-		ReverseProxy:    httputil.NewSingleHostReverseProxy(url),
-		log:             logger,
+		ReverseProxy:     httputil.NewSingleHostReverseProxy(url),
+		log:              logger,
 		originalDirector: nil,
 	}
 
@@ -54,7 +55,12 @@ func ProxyRequestHandler(proxy *httputil.ReverseProxy) func(http.ResponseWriter,
 func (p *proxy) hookRequest() func(req *http.Request) {
 	return func(req *http.Request) {
 		p.originalDirector(req)
-		p.log.Info("Request received", zap.String("Method", req.Method), zap.String("URL", req.URL.String()))
+		p.log.Info("Received incoming request",
+			zap.String("Method", req.Method),
+			zap.String("URL", req.URL.String()),
+			zap.String("Client IP", req.RemoteAddr),
+			zap.String("User-Agent", req.UserAgent()),
+			zap.Time("Timestamp", time.Now()))
 	}
 }
 
@@ -62,12 +68,20 @@ func (p *proxy) hookRequest() func(req *http.Request) {
 // The function logs the outgoing responses.
 func (p *proxy) hookResponse() func(*http.Response) error {
 	return func(resp *http.Response) error {
-		p.log.Info("Response received", zap.String("Status", resp.Status))
+		p.log.Info("Outgoing response",
+			zap.String("Status", resp.Status),
+			zap.Time("Timestamp", time.Now()))
 		return nil
 	}
 }
 
 // errorHandler logs any errors encountered by the reverse proxy.
 func (p *proxy) errorHandler(rw http.ResponseWriter, req *http.Request, err error) {
-	p.log.Error("Proxy error", zap.Error(err))
+	p.log.Error("Error encountered while processing request",
+		zap.Error(err),
+		zap.String("Method", req.Method),
+		zap.String("URL", req.URL.String()),
+		zap.String("Client IP", req.RemoteAddr),
+		zap.String("User-Agent", req.UserAgent()),
+		zap.Time("Timestamp", time.Now()))
 }
