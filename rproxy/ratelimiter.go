@@ -27,7 +27,7 @@ func GetRateLimiter(ip string) *rate.Limiter {
 
 // rateLimiterMiddleware checks if the incoming request exceeds the rate limit.
 // If it does, the middleware responds with a "Too Many Requests" status and stops further processing.
-func RateLimiterMiddleware(next http.Handler) http.Handler {
+func RateLimiterMiddleware(p *proxy) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		// Extract the IP address from the request
 		ip := req.RemoteAddr
