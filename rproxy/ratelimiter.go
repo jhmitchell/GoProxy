@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -39,10 +41,17 @@ func RateLimiterMiddleware(p *proxy) http.Handler {
 
 		limiter := GetRateLimiter(ip)
 		if !limiter.Allow() {
+			p.log.Warn("Rate limit exceeded",
+				zap.String("Client IP", ip),
+				zap.String("Method", req.Method),
+				zap.String("URL", req.URL.String()),
+				zap.String("User-Agent", req.UserAgent()),
+				zap.Time("Timestamp", time.Now()))
+
 			http.Error(rw, "Too Many Requests", http.StatusTooManyRequests)
 			return
 		}
 
-		next.ServeHTTP(rw, req)
+		p.ReverseProxy.ServeHTTP(rw, req)
 	})
 }
