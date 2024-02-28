@@ -12,17 +12,20 @@ import (
 )
 
 // parseArgs parses the command-line arguments for proxy parameters.
-func parseArgs() (string, int, int, *zap.Logger) {
-	var rhost, logfile string
+func parseArgs() (string, int, int, string, string, string, *zap.Logger) {
+	var rhost, logfile, mode, certFile, keyFile string
 	var rport, lport int
 
 	log, _ := zap.NewProduction()
 
 	// Set flags. Note: I want to try colorizing this
+	flag.StringVar(&mode, "mode", "http", "The mode to run the proxy server in: http or https")
 	flag.StringVar(&rhost, "rhost", "", "The host to be proxied")
 	flag.IntVar(&rport, "rport", 80, "The port of the host to be proxied")
 	flag.IntVar(&lport, "lport", 8080, "The port the proxy will listen on")
 	flag.StringVar(&logfile, "logging", "", "Logfile name")
+	flag.StringVar(&certFile, "cert", "path/to/cert.pem", "Path to SSL certificate file")
+	flag.StringVar(&keyFile, "key", "path/to/key.pem", "Path to SSL private key file")
 
 	// Set custom usage function
 	flag.Usage = func() {
@@ -54,11 +57,11 @@ func parseArgs() (string, int, int, *zap.Logger) {
 		))
 	}
 
-	return rhost, rport, lport, log
+	return mode, lport, rport, rhost, certFile, keyFile, log
 }
 
 func main() {
-	rhost, rport, lport, log := parseArgs()
+	mode, lport, rport, rhost, certFile, keyFile, log := parseArgs()
 
 	p, err := rproxy.NewProxy(rhost, rport, log)
 	if err != nil {
@@ -68,14 +71,18 @@ func main() {
 
 	log.Info("Reverse Proxy running")
 
-	// Wrap the reverse proxy in a rate limiter middleware
 	http.Handle("/", rproxy.RateLimiterMiddleware(p))
 
-	// Start the http server
-	// Note: More control over the server's behavior is available by creating
-	// a custom Server
 	lportString := fmt.Sprintf(":%d", lport)
-	if err := http.ListenAndServe(lportString, nil); err != nil {
-		log.Fatal("Failed to start server", zap.Error(err))
+	if mode == "https" {
+		log.Info("Starting server in HTTPS mode", zap.String("port", lportString))
+		if err := http.ListenAndServeTLS(lportString, certFile, keyFile, nil); err != nil {
+			log.Fatal("Failed to start HTTPS server", zap.Error(err))
+		}
+	} else {
+		log.Info("Starting server in HTTP mode", zap.String("port", lportString))
+		if err := http.ListenAndServe(lportString, nil); err != nil {
+			log.Fatal("Failed to start HTTP server", zap.Error(err))
+		}
 	}
 }
